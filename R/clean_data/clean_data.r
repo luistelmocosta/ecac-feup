@@ -41,6 +41,14 @@ stats<-sapply(1:length(district), printStats, data = district)
 colnames(stats) <- names(district)
 createPlot("District Missing Values", legendPlaceX = "topright")
 
+#--change missing/unknown values (?) to NA--#
+cat("\n Clean up the missing values \n")
+question_size<-length(district[district == "?"])
+cat(sprintf("n Missing Values : %d", question_size)) #missing values == 2
+
+
+
+
 #---LOAN DATA CLEAN---#
 #--loan missing values(plot)--#
 stats<-sapply(1:length(loan), printStats, data = loan)
