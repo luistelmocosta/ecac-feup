@@ -36,15 +36,36 @@ colnames(stats) <- names(credit_card)
 createPlot("Credit Card Missing Values", legendPlaceX = "topright")
 
 #---DISTRICT DATA CLEAN---#
+
+
+#--change missing/unknown values (?) to NA--#
+cat("\n Clean up the missing values \n")
+question_size<-length(district[district == "?"])
+cat(sprintf("\n Missing Values (marked with ?) : %d", question_size)) #missing values == 2
+
+district[district == "?"] <- NA
+
 #--district missing values(plot)--#
 stats<-sapply(1:length(district), printStats, data = district)
 colnames(stats) <- names(district)
 createPlot("District Missing Values", legendPlaceX = "topright")
 
-#--change missing/unknown values (?) to NA--#
-cat("\n Clean up the missing values \n")
-question_size<-length(district[district == "?"])
-cat(sprintf("n Missing Values : %d", question_size)) #missing values == 2
+#--change values to numeric due to error "need numeric data"--#
+
+district[,c("unemploymant.rate..95","no..of.commited.crimes..95")] <- 
+  sapply(district[,c("unemploymant.rate..95","no..of.commited.crimes..95")],as.numeric)
+
+#--changing column name "code" to "district_id" for an easier join--#
+colnames(district)[1] <- "district_id"
+
+#--fill missing district ids with median of the others--#
+
+cat("\n Filling District NAs with median...\n")
+district$unemploymant.rate..95[is.na(district$unemploymant.rate..95)] <- median(district$unemploymant.rate..95, na.rm = TRUE)
+district$no..of.commited.crimes..95[is.na(district$no..of.commited.crimes..95)] <- median(district$no..of.commited.crimes..95, na.rm = TRUE)
+
+
+        
 
 
 
@@ -60,3 +81,26 @@ createPlot("Loan Missing Values", legendPlaceX = "topright")
 stats<-sapply(1:length(transactions), printStats, data = transactions)
 colnames(stats) <- names(transactions)
 createPlot("Transactions Missing Values", legendPlaceX = "topright")
+
+
+#---MERGES---#
+
+#--merge account with transaction--#
+temp <- merge(client, district, by = "district_id")
+temp <- merge(client, disposition, by = "client_id")
+#temp <- merge(temp, credit_card, by = "disp_id")
+
+meansTemp <- subset(transactions, select = c(account_id, amount, balance))
+means <- aggregate(.~account_id, data=meansTemp, mean)
+colnames(means)[2] <- "Avg_amount"
+colnames(means)[3] <- "Avg_balance"
+temp <- merge(temp, means, by = "account_id", all.x = TRUE)
+
+#--remove disponents and NA values--#
+
+final <- na.omit(temp)
+final <- final[!final$type=="DISPONENT",]
+
+#--merge with loans--#
+
+final<-merge(final, loan, by="account_id")
