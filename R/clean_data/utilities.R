@@ -30,6 +30,16 @@ get_client_age <- function(x, data, currentYear) {
   
 }
 
+#-------CLIENT-------#
+#--Get client gender--#
+get_client_gender <- function(x, data) {
+  gender_vector <- unlist(strsplit(data$birth_number[x], ""))
+  gender_vector <- paste(gender_vector[3:4], collapse = "")
+  gender <- c(gender_vector)
+  gender_vector <- paste(gender, collapse = "")
+  gender_final <- if(gender_vector > 12) {"F"} else {"M"}
+}
+
 #--Create a Bar Plot --#
 
 createPlot <- function(name, legendPlaceX, legendPlaceY){

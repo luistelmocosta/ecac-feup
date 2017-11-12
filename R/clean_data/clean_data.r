@@ -15,7 +15,7 @@ createPlot("Account Missing Values", legendPlaceX = "topright")
 #--Get the age from the column "birth_number" in client.csv--#
 client[,"birth_number"] <- sapply(client[, "birth_number"], as.character)
 client["client_age"] <- sapply(1:nrow(client), get_client_age, data = client, currentYear = 2017)
-
+client ["gender"] <- sapply(1:nrow(client), get_client_gender, data=client)
 #--client missing values (plot)--#
 stats<-sapply(1:length(client), printStats, data = client)
 colnames(stats) <- names(client)
@@ -85,10 +85,16 @@ createPlot("Transactions Missing Values", legendPlaceX = "topright")
 
 #---MERGES---#
 
-#--merge account with transaction--#
-temp <- merge(client, district, by = "district_id")
+#merge with disposition
 temp <- merge(client, disposition, by = "client_id")
-#temp <- merge(temp, credit_card, by = "disp_id")
+
+#merge account
+temp <- merge(temp, account, by = "account_id", all.x = TRUE)
+# Remove non owners
+temp <- temp[!temp$type=="DISPONENT",] 
+# Remove column
+temp <- subset(temp, select = -type) 
+
 
 meansTemp <- subset(transactions, select = c(account_id, amount, balance))
 means <- aggregate(.~account_id, data=meansTemp, mean)
@@ -96,11 +102,35 @@ colnames(means)[2] <- "Avg_amount"
 colnames(means)[3] <- "Avg_balance"
 temp <- merge(temp, means, by = "account_id", all.x = TRUE)
 
-#--remove disponents and NA values--#
+auxTemp <- subset(transactions, select = c(account_id, balance))
+min_final <- aggregate(.~account_id, data=auxTemp, min)
+colnames(min_final)[2] <- "Min_Balance"
+temp <- merge(temp, min_final, by = "account_id", all.x = TRUE)
+
+maxTemp <- subset(transactions, select =  c(account_id, balance))
+max_final <- aggregate(.~account_id, data=maxTemp, max)
+colnames(max_final)[2] <- "Max_Balance"
+temp <- merge(temp, max_final, by = "account_id", all.x = TRUE)
+
+avgExpensesTemp <- subset(transactions, select = c(account_id, amount, type))
+avgExpensesTemp <- avgExpensesTemp[!avgExpensesTemp$type=="credit",]
+avgExpenses <- aggregate(.~account_id, data=avgExpensesTemp, mean)
+colnames(avgExpenses)[2] <- "Average Expenses (Withrawals"
+temp <- merge(temp, avgExpenses, by = "account_id", all.x = TRUE)
+temp <- subset(temp, select = -type) 
+
+avgIncomesTemp <- subset(transactions, select = c(account_id, amount, type))
+avgIncomesTemp <- avgIncomesTemp[avgIncomesTemp$type=="credit",]
+avgIncomes <- aggregate(.~account_id, data=avgIncomesTemp, mean)
+colnames(avgIncomes)[2] <- "Average Income (Credit)"
+temp <- merge(temp, avgIncomes, by = "account_id", all.x = TRUE)
+temp <- subset(temp, select = -type) 
+
+#--remove NA values--#
 
 final <- na.omit(temp)
-final <- final[!final$type=="DISPONENT",]
-
-#--merge with loans--#
-
-final<-merge(final, loan, by="account_id")
+write.csv(final, "clean1.csv")
+#final print
+stats<-sapply(1:length(final), printStats, data = final)
+colnames(stats) <- names(final)
+createPlot("FinalMissing Values", legendPlaceX = "topright", legendPlaceY = 4500)
