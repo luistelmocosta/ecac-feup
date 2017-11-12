@@ -16,7 +16,6 @@ Using the same approach we did the same for the other dimensions
 - district correlation - to see if there is any correlation between attributes. We could conclude that *districts with more inhabitants and ratio_urban have an higher average_salary.
 - loan correlation - Loans amount is highly related with its duration. Higher the amount, longer duration. (as expected)
 
-
 Did some improvements on data with R:
 - Merged client with districts
 - Merged with disposition (pipe between account and client)
