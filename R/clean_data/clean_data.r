@@ -3,7 +3,9 @@
 #---Get the age from the column "date" in account.csv---#
 account[,"date"] <- sapply(account[,"date"],as.character)
 account["account_age"] <- sapply(1:nrow(account), get_account_age, data =account, currentYear = as.integer(format(Sys.Date(), "%Y")))
+account <- subset(account, select = -date)
 
+write.csv(account, "modified/accounts.csv")
 
 #---account missing values (plot)--#
 stats<-sapply(1:length(account), printStats, data = account)
@@ -20,6 +22,8 @@ client ["gender"] <- sapply(1:nrow(client), get_client_gender, data=client)
 stats<-sapply(1:length(client), printStats, data = client)
 colnames(stats) <- names(client)
 createPlot("Client Missing Values", legendPlaceX = "topright")
+
+#write.csv(client, "modified/clients.csv")
 
 #---DISPOSITION DATA CLEAN---#
 
@@ -64,11 +68,7 @@ cat("\n Filling District NAs with median...\n")
 district$unemploymant.rate..95[is.na(district$unemploymant.rate..95)] <- median(district$unemploymant.rate..95, na.rm = TRUE)
 district$no..of.commited.crimes..95[is.na(district$no..of.commited.crimes..95)] <- median(district$no..of.commited.crimes..95, na.rm = TRUE)
 
-
-        
-
-
-
+write.csv(district, "modified/districts.csv")
 
 #---LOAN DATA CLEAN---#
 #--loan missing values(plot)--#
@@ -83,6 +83,15 @@ colnames(stats) <- names(transactions)
 createPlot("Transactions Missing Values", legendPlaceX = "topright")
 
 
+write.csv(loan, "modified/loans.csv")
+write.csv(credit_card, "modified/cards.csv")
+write.csv(disposition, "modified/disps.csv")
+write.csv(loan, "modified/loans.csv")
+write.csv(transactions, "modified/transactions.csv")
+
+
+
+
 #---MERGES---#
 
 #merge with disposition
@@ -95,6 +104,11 @@ temp <- temp[!temp$type=="DISPONENT",]
 # Remove column
 temp <- subset(temp, select = -type) 
 
+
+#--merge with loan--#
+temp <- merge(temp, loan, by = "account_id", all.x = TRUE)
+temp <- subset(temp, select = -loan_id)
+temp <- subset(temp, select = -c(district_id, disp_id))
 
 meansTemp <- subset(transactions, select = c(account_id, amount, balance))
 means <- aggregate(.~account_id, data=meansTemp, mean)
@@ -115,7 +129,7 @@ temp <- merge(temp, max_final, by = "account_id", all.x = TRUE)
 avgExpensesTemp <- subset(transactions, select = c(account_id, amount, type))
 avgExpensesTemp <- avgExpensesTemp[!avgExpensesTemp$type=="credit",]
 avgExpenses <- aggregate(.~account_id, data=avgExpensesTemp, mean)
-colnames(avgExpenses)[2] <- "Average Expenses (Withrawals"
+colnames(avgExpenses)[2] <- "Average Expenses (Withrawals)"
 temp <- merge(temp, avgExpenses, by = "account_id", all.x = TRUE)
 temp <- subset(temp, select = -type) 
 
@@ -126,10 +140,37 @@ colnames(avgIncomes)[2] <- "Average Income (Credit)"
 temp <- merge(temp, avgIncomes, by = "account_id", all.x = TRUE)
 temp <- subset(temp, select = -type) 
 
+#-- Calculate total withrawals --#
+totalExpensesTemp <- subset(transactions, select = c(account_id, amount, type))
+totalExpensesTemp <- totalExpensesTemp[!totalExpensesTemp$type=="credit",]
+totalExpenses <- aggregate(.~account_id, data= totalExpensesTemp, sum)
+colnames(totalExpenses)[2] <- "Total Withrawals"
+temp <- merge(temp, totalExpenses, by = "account_id", all.x = TRUE)
+temp <- subset(temp, select = -type) 
+
+#-- Calculate total withrawals --#
+totalIncomeTemp <- subset(transactions, select = c(account_id, amount, type))
+totalIncomeTemp <- totalExpensesTemp[totalIncomeTemp$type=="credit",]
+totalIncomes <- aggregate(.~account_id, data= totalIncomeTemp, sum)
+colnames(totalIncomes)[2] <- "Total Income"
+temp <- merge(temp, totalIncomes, by = "account_id", all.x = TRUE)
+temp <- subset(temp, select = -type) 
+temp <- subset(temp, select = -payments) 
+temp <- subset(temp, select = -duration) 
+temp <- subset(temp, select = -amount) 
+temp <- subset(temp, select = -date) 
+
+#-- Calculate number of loans --#
+totalLoansTemp <- subset(loan, select = c(account_id, status))
+totalLoansTemp <- totalLoansTemp[totalLoansTemp$status==1,]
+totalLoans <- aggregate(.~account_id, data= totalLoansTemp, sum)
+
 #--remove NA values--#
 
 final <- na.omit(temp)
 write.csv(final, "clean1.csv")
+
+
 #final print
 stats<-sapply(1:length(final), printStats, data = final)
 colnames(stats) <- names(final)
